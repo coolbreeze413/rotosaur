@@ -260,7 +260,8 @@ void updateDisplay()
 }
 
 
-void showSplashScreen() {
+void showSplashScreen() 
+{
     oled.clear();
     oled.print("[  R");delay(100);oled.print("O"); delay(100); oled.print("T"); delay(100);oled.println("O  ]");delay(100);
     oled.print("[  S");delay(100);oled.print("A");delay(100);oled.print("U");delay(100);oled.print("R  ]");delay(500);
