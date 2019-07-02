@@ -65,6 +65,8 @@ is_powered = true ?
 int current_volume = 0;
 bool is_muted = false;
 bool is_powered = false;
+unsigned long off_time_in_millis = 0;
+bool is_display_off = false;
 #define POWER_NUM_STEPS         6
 #define MIN_VOLUME              0
 #define MAX_VOLUME              40  
@@ -147,6 +149,12 @@ void do_power()
     // power up sequence :
     if(is_powered == false)
     {
+        // turn on the display first, if it has been switched off:
+        if(is_display_off == true)
+        {
+            oled.ssd1306WriteCmd(SSD1306_DISPLAYON); 
+        }
+
         if(is_muted == true)
         {
             // was muted, so only power on to zero volume
@@ -158,7 +166,7 @@ void do_power()
             stepperC.move(false, ((POWER_NUM_STEPS + current_volume) * (SINGLE_STEP)));
         }
         
-        is_powered = true;
+        is_powered = true;        
     }
     // power down sequence :
     else
@@ -174,7 +182,7 @@ void do_power()
             stepperC.move(true, ((POWER_NUM_STEPS + current_volume) * (SINGLE_STEP)));
         }
         is_powered = false;
-            
+        off_time_in_millis = 0;    
     }
 }
 
@@ -401,4 +409,16 @@ void loop()
     }
 
     delay(300);
+
+    // once we are powered off, turn off the OLED display after some time:
+    if( (is_powered == false) && (is_display_off == false) )
+    {
+        off_time_in_millis += 300;
+        if(off_time_in_millis >= 10000)
+        {
+            // turn off the OLED display to prevent burn in.
+            oled.ssd1306WriteCmd(SSD1306_DISPLAYOFF);
+            is_display_off = true;
+        }
+    }
 }
