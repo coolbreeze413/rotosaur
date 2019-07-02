@@ -182,7 +182,6 @@ void do_power()
             stepperC.move(true, ((POWER_NUM_STEPS + current_volume) * (SINGLE_STEP)));
         }
         is_powered = false;
-        last_change_time_ms = 0;    
     }
 }
 
@@ -242,10 +241,13 @@ void do_volume(bool up)
 void updateDisplay()
 {
     // maybe the display is currently off in the anti-burn-in cycle
-    oled.ssd1306WriteCmd(SSD1306_DISPLAYOFF);
+    oled.ssd1306WriteCmd(SSD1306_DISPLAYON);
 
     // maybe the display is currently inverted in the anti-burn-in cycle
     oled.invertDisplay(false);
+
+    // maybe the display was not in 2x mode in the anti-burn-in cycle
+    oled.set2X();
 
     // clean slate
     oled.clear();    
@@ -316,6 +318,9 @@ void do_OLEDAntiBurnIn()
             // init this to OLED burn in cycle time instead of zero, so that we kick in the first
             // burn in cycle immediately, on the next loop. yeah, it is a bit disingenuous.
             last_anti_burn_cycle_ms = OLED_BURN_IN_CYCLE_ms;
+
+            // start from the first anti-birn-in cycle
+            anti_burn_cycle_num = 0;
         }
     }
     else // anti-burn in mode is active already
@@ -326,7 +331,9 @@ void do_OLEDAntiBurnIn()
             if(anti_burn_cycle_num == 0)
             {
                 // display logo screen
+                oled.ssd1306WriteCmd(SSD1306_DISPLAYON);
                 oled.clear();
+                oled.set1X();
                 oled.println("[  ROTO  ]");
                 oled.println("[  SAUR  ]");
                 oled.invertDisplay(true);
@@ -416,8 +423,7 @@ void setup()
 #endif // RST_PIN >= 0
 
     oled.setFont(Cooper26);
-    showSplashScreen();    
-    oled.set2X();
+    showSplashScreen();
     updateDisplay();
 
 #endif // #ifdef SSD1306_GREIMAN_5169_LIB
