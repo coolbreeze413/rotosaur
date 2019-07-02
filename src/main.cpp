@@ -68,14 +68,15 @@ bool is_powered = false;
 unsigned long last_change_time_ms = 0;
 unsigned long last_anti_burn_cycle_ms = 0;
 bool is_anti_burn_in_active = false;
-uint8_t anti_burn_cycle_num = 0;
-#define LOOP_DELAY_ms                   300
-#define POWER_NUM_STEPS                 6
-#define MIN_VOLUME                      0
-#define MAX_VOLUME                      40  
-#define OLED_BURN_IN_THRESHOLD_ms       5000
-#define OLED_BURN_IN_CYCLE_ms           5000
-#define OLED_NUM_BURN_IN_CYCLES         4
+uint8_t anti_burn_in_cycle_type = 0;
+uint32_t num_anti_burn_cycles_completed = 0;
+#define LOOP_DELAY_ms                               300
+#define POWER_NUM_STEPS                             6
+#define MIN_VOLUME                                  0
+#define MAX_VOLUME                                  40  
+#define OLED_BURN_IN_THRESHOLD_ms                   5000
+#define OLED_BURN_IN_CYCLE_ms                       5000
+#define OLED_NUM_ANTI_BURN_IN_CYCLE_TYPES           4
 
 
 #include <IRremote.h>
@@ -319,16 +320,24 @@ void do_OLEDAntiBurnIn()
             // burn in cycle immediately, on the next loop. yeah, it is a bit disingenuous.
             last_anti_burn_cycle_ms = OLED_BURN_IN_CYCLE_ms;
 
-            // start from the first anti-birn-in cycle
-            anti_burn_cycle_num = 0;
+            // start from the first anti-burn-in cycle
+            anti_burn_in_cycle_type = 0;
+
+            // reset count of number of anti burn in cycles done
+            num_anti_burn_cycles_completed = 0;
         }
     }
     else // anti-burn in mode is active already
-    {        
-        if(last_anti_burn_cycle_ms >= OLED_BURN_IN_CYCLE_ms)
+    {
+        // idle for more than 4 hours, switch off the display completely, wake up when user interacts (ir-receive)
+        if(num_anti_burn_cycles_completed > ((4*60*60)/(5)) )
+        {
+            oled.ssd1306WriteCmd(SSD1306_DISPLAYOFF);
+        }               
+        else if(last_anti_burn_cycle_ms >= OLED_BURN_IN_CYCLE_ms)
         {            
             // execute the current burn in cycle
-            if(anti_burn_cycle_num == 0)
+            if(anti_burn_in_cycle_type == 0)
             {
                 // display logo screen
                 oled.ssd1306WriteCmd(SSD1306_DISPLAYON);
@@ -338,35 +347,52 @@ void do_OLEDAntiBurnIn()
                 oled.println("[  SAUR  ]");
                 oled.invertDisplay(true);
             }
-            else if(anti_burn_cycle_num == 1)
+            else if(anti_burn_in_cycle_type == 1)
             {
                 // turn off display
                 oled.ssd1306WriteCmd(SSD1306_DISPLAYOFF);
             }
-            else if(anti_burn_cycle_num == 2)
+            else if(anti_burn_in_cycle_type == 2)
             {
                 // display current state
                 updateDisplay();
             }
-            else if(anti_burn_cycle_num == 3)
+            else if(anti_burn_in_cycle_type == 3)
             {
                 // turn off display
                 oled.ssd1306WriteCmd(SSD1306_DISPLAYOFF);
             }
 
             // go to the next anti burn oled cycle
-            anti_burn_cycle_num++;
-            if(anti_burn_cycle_num == OLED_NUM_BURN_IN_CYCLES)
+            anti_burn_in_cycle_type++;
+            if(anti_burn_in_cycle_type == OLED_NUM_ANTI_BURN_IN_CYCLE_TYPES)
             {
-                anti_burn_cycle_num = 0;
+                anti_burn_in_cycle_type = 0;
             }
             last_anti_burn_cycle_ms = 0;
+
+            // keep track of the "idle" cycles of doing just burn-in
+            num_anti_burn_cycles_completed++;
         }
 
         // increment the anti-burn-in cycle timer
         last_anti_burn_cycle_ms += LOOP_DELAY_ms;
     }
     
+}
+
+
+void saveStateToEEPROM()
+{
+    // is_muted, current_volume
+    // save only at every power_off cycle ?
+}
+
+
+void restoreStateFromEEPROM()
+{
+    // is_muted, current_volume
+    // restore at first boot only
 }
 
 
