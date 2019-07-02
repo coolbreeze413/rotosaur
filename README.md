@@ -13,41 +13,62 @@ Arduino based IR remote controller for old speakers with mechanical knob-control
 ```
     SCHEMATIC:
 
-+5V                                       +5V
-    +     +--------+ A4   SDA +---------+ VDD +
-    +-----+        |          |         +-----+
-          |        +----------+ SSD1306 |
-          |        | A5   SCL | I2C     | GND
-          |        +----------+         +---------+
-          | ATMEGA |          +---------+         +
-          | 328P   |                              GND
-          |        |                          +5V
-          |        | D4   IN1 +---------+ VDD |
-          |        +----------+         +-----+
-          |        |          | ULN2003 |
-          |        | D5   IN2 |         |
-          |        +----------+ STEPPER |
-          |        |          | CONTROL |
-          |        | D6   IN3 |         |
-          |        +----------+         |
-          |        |          |         |
-          |        | D7   IN4 |         | GND
-          |        +----------+         +---------+
-          |        |          +---------+         +
-          |        |                              GND
-          |        |                          +5V
-          |        | D11    Y +---------+ R   |
-          |        +----------+         +-----+
-          |        |          | IR      | G
-+---------+        |          |         +---------+
-+         +--------+          +---------+         +
-GND                                               GND
++     +--------+ A4   SDA +---------+ VDD +
++-----+        +----------+         +-----+
+      |        |          | SSD1306 |
+      |        | A5   SCL | I2C     |
+      |        +----------+         +-----+
+      | ATMEGA |          +---------+ GND -
+      | 328P   |
+      |        |
+      |        | D4   IN1 +---------+ VDD +
+      |        +----------+         +-----+
+      |        |          | ULN2003 |
+      |        | D5   IN2 |         |
+      |        +----------+ STEPPER |
+      |        |          | CONTROL |
+      |        | D6   IN3 |         |
+      |        +----------+         |
+      |        |          |         |
+      |        | D7   IN4 |         |
+      |        +----------+         +-----+
+      |        |          +---------+ GND -
+      |        |
+      |        |
+      |        | D11    Y +---------+ R   +
+      |        +----------+         +-----+
+      |        |          | IR      |
++-----+        |          |         +-----+
+-     +--------+          +---------+ G   -
 
 
 ```
 
+## Hardware
 
-## Will replace this with a better readme soon
+1. Arduino Nano (ATMega328P) :
+    - https://robu.in/product/arduino-nano-v3-0-ch340-chip-mini-usb-cable/
+
+2. ULN2003 Stepper Motor Controller : 
+    - https://robu.in/product/uln2003-driver-module-stepper-motor-driver/
+
+3. 28BYJ-48 Stepper Motor : 
+    - https://www.digibay.in/4-phase-5-wire-stepper-motor-5v-28byj-48-5v
+
+4. Belt Drive (or O-Ring) :
+    - https://robu.in/product/gt2-close-loop-188mm-long-6mm-width-rubber-timing-belt-for-3d-printer/
+
+5. Stepper Motor Timing Pulley 5mm Bore GT2 Profile : 
+     - https://robu.in/product/aluminum-gt2-timing-pulley-for-6mm-belt-20-tooth-5mm-bore-2pcs/
+
+6. Foam Tape to put over the knob so that we have enough friction for the timing belt to rotate the knob without slippage and wasted torque
+
+7. 2 Sided Perf-Board to mount them all + Wires + Female Headers etc.
+
+8. Transparent Plastic Box to hold them all.
+
+
+## NOTES
 
 
 ```
