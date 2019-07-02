@@ -9,8 +9,8 @@ Arduino based IR remote controller for old speakers with mechanical knob-control
 ██║  ██║╚██████╔╝   ██║   ╚██████╔╝███████║██║  ██║╚██████╔╝██║  ██║
 ╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝
 ```
-
 Thanks: http://patorjk.com/software/taag/#p=display&f=ANSI%20Shadow&t=ROTOSAUR
+
 
 ```
     SCHEMATIC:
@@ -45,6 +45,8 @@ Thanks: http://patorjk.com/software/taag/#p=display&f=ANSI%20Shadow&t=ROTOSAUR
 
 
 ```
+Thanks: http://asciiflow.com/
+
 
 ## Hardware
 
