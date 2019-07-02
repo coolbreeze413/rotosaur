@@ -65,11 +65,17 @@ is_powered = true ?
 int current_volume = 0;
 bool is_muted = false;
 bool is_powered = false;
-unsigned long off_time_in_millis = 0;
-bool is_display_off = false;
-#define POWER_NUM_STEPS         6
-#define MIN_VOLUME              0
-#define MAX_VOLUME              40  
+unsigned long last_change_time_ms = 0;
+unsigned long last_anti_burn_cycle_ms = 0;
+bool is_anti_burn_in_active = false;
+uint8_t anti_burn_cycle_num = 0;
+#define LOOP_DELAY_ms                   300
+#define POWER_NUM_STEPS                 6
+#define MIN_VOLUME                      0
+#define MAX_VOLUME                      40  
+#define OLED_BURN_IN_THRESHOLD_ms       5000
+#define OLED_BURN_IN_CYCLE_ms           5000
+#define OLED_NUM_BURN_IN_CYCLES         4
 
 
 #include <IRremote.h>
@@ -149,12 +155,6 @@ void do_power()
     // power up sequence :
     if(is_powered == false)
     {
-        // turn on the display first, if it has been switched off:
-        if(is_display_off == true)
-        {
-            oled.ssd1306WriteCmd(SSD1306_DISPLAYON); 
-        }
-
         if(is_muted == true)
         {
             // was muted, so only power on to zero volume
@@ -182,7 +182,7 @@ void do_power()
             stepperC.move(true, ((POWER_NUM_STEPS + current_volume) * (SINGLE_STEP)));
         }
         is_powered = false;
-        off_time_in_millis = 0;    
+        last_change_time_ms = 0;    
     }
 }
 
@@ -241,6 +241,13 @@ void do_volume(bool up)
 
 void updateDisplay()
 {
+    // maybe the display is currently off in the anti-burn-in cycle
+    oled.ssd1306WriteCmd(SSD1306_DISPLAYOFF);
+
+    // maybe the display is currently inverted in the anti-burn-in cycle
+    oled.invertDisplay(false);
+
+    // clean slate
     oled.clear();    
 
     if(is_powered == false)
@@ -277,6 +284,82 @@ void showSplashScreen()
     oled.invertDisplay(false);delay(500);
     oled.invertDisplay(true);delay(500);
     oled.invertDisplay(false);
+}
+
+
+void do_OLEDAntiBurnIn()
+{
+    // to prevent the OLED from burning in, we need to periodically change the display contents
+    // so that the same text does not continue to be displayed for a long time.
+
+    // so, after a user-triggered change (IR remote button press), we do:
+    // - update display according to currently active state (off/mute/volume)
+    // - disable anti-burn-in mode
+    // - and wait for a threshold, of say 10 seconds to kick into anti-burn-in mode for the OLED.
+    // once we are in anti-burn-in mode, we cycle the display contents every X duration, 
+    // which we may say is the oled anti-burn-in-cycle time. we will cycle between:
+    // 1. display the splash screen style for X duration
+    // 2. turn off display for X duration
+    // 3. display the current state (as normal) for X duration
+    // 4. turn off display for X duration
+    // cycle back to 1
+
+    if (is_anti_burn_in_active == false)
+    {
+        last_change_time_ms += LOOP_DELAY_ms;
+        if (last_change_time_ms > OLED_BURN_IN_THRESHOLD_ms)
+        {
+            // kick in the anti burn in mode:
+            is_anti_burn_in_active = true;
+
+            // init the burn cycle timer
+            // init this to OLED burn in cycle time instead of zero, so that we kick in the first
+            // burn in cycle immediately, on the next loop. yeah, it is a bit disingenuous.
+            last_anti_burn_cycle_ms = OLED_BURN_IN_CYCLE_ms;
+        }
+    }
+    else // anti-burn in mode is active already
+    {        
+        if(last_anti_burn_cycle_ms >= OLED_BURN_IN_CYCLE_ms)
+        {            
+            // execute the current burn in cycle
+            if(anti_burn_cycle_num == 0)
+            {
+                // display logo screen
+                oled.clear();
+                oled.println("[  ROTO  ]");
+                oled.println("[  SAUR  ]");
+                oled.invertDisplay(true);
+            }
+            else if(anti_burn_cycle_num == 1)
+            {
+                // turn off display
+                oled.ssd1306WriteCmd(SSD1306_DISPLAYOFF);
+            }
+            else if(anti_burn_cycle_num == 2)
+            {
+                // display current state
+                updateDisplay();
+            }
+            else if(anti_burn_cycle_num == 3)
+            {
+                // turn off display
+                oled.ssd1306WriteCmd(SSD1306_DISPLAYOFF);
+            }
+
+            // go to the next anti burn oled cycle
+            anti_burn_cycle_num++;
+            if(anti_burn_cycle_num == OLED_NUM_BURN_IN_CYCLES)
+            {
+                anti_burn_cycle_num = 0;
+            }
+            last_anti_burn_cycle_ms = 0;
+        }
+
+        // increment the anti-burn-in cycle timer
+        last_anti_burn_cycle_ms += LOOP_DELAY_ms;
+    }
+    
 }
 
 
@@ -395,9 +478,16 @@ void loop()
         else
         {
             Serial.println("unhandled IR code");            
-        }       
+        }
 
-        
+
+        // this will reset the OLED burn in mode
+        is_anti_burn_in_active = false;
+
+        // we have received an IR code, so user is active, indicate by setting last change time        
+        last_change_time_ms = 0;
+
+
         Serial.print("is_powered: ");Serial.println(is_powered);
         Serial.print("is_muted: ");Serial.println(is_muted);
         Serial.print("volume: ");Serial.println(current_volume);
@@ -405,20 +495,14 @@ void loop()
         Serial.println();
 
 
-        irrecv.resume(); // Receive the next value
+        irrecv.resume(); // IR ready to receive the next value
     }
 
-    delay(300);
+    // loop delay is required, so that we have a sane amount of IR codes received
+    // the remote might send the code multiple times, as those membrane keys are 
+    // notorious for their mushy multi press behavior
+    delay(LOOP_DELAY_ms);
 
-    // once we are powered off, turn off the OLED display after some time:
-    if( (is_powered == false) && (is_display_off == false) )
-    {
-        off_time_in_millis += 300;
-        if(off_time_in_millis >= 10000)
-        {
-            // turn off the OLED display to prevent burn in.
-            oled.ssd1306WriteCmd(SSD1306_DISPLAYOFF);
-            is_display_off = true;
-        }
-    }
+    // check and perform OLED anti burn techniques if required
+    do_OLEDAntiBurnIn();
 }
