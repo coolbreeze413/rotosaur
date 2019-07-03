@@ -77,6 +77,7 @@ uint32_t num_anti_burn_cycles_completed = 0;
 #define OLED_BURN_IN_THRESHOLD_ms                   5000
 #define OLED_BURN_IN_CYCLE_ms                       5000
 #define OLED_NUM_ANTI_BURN_IN_CYCLE_TYPES           4
+#define OLED_TURN_OFF_THRESHOLD_BURN_IN_CYCLES      180     // 15 min = 900000ms/5000ms = 180 cycles of anti-burn-in
 
 
 #include <IRremote.h>
@@ -306,6 +307,7 @@ void do_OLEDAntiBurnIn()
     // 3. display the current state (as normal) for X duration
     // 4. turn off display for X duration
     // cycle back to 1
+    // again, after a long idle time of our anti-burn-in mode, we switch off the display completely.
 
     if (is_anti_burn_in_active == false)
     {
@@ -329,8 +331,8 @@ void do_OLEDAntiBurnIn()
     }
     else // anti-burn in mode is active already
     {
-        // idle for more than 4 hours, switch off the display completely, wake up when user interacts (ir-receive)
-        if(num_anti_burn_cycles_completed > ((4*60*60)/(5)) )
+        // idle for more than x hours, switch off the display completely, wake up when user interacts (ir-receive)
+        if(num_anti_burn_cycles_completed > OLED_TURN_OFF_THRESHOLD_BURN_IN_CYCLES)
         {
             oled.ssd1306WriteCmd(SSD1306_DISPLAYOFF);
         }               
@@ -469,22 +471,18 @@ void loop()
         if(results.value == SAMSUNG_VOL_UP)
         {
             do_volume(ARG_VOLUME_UP);
-            updateDisplay();
         }
         else if(results.value == SAMSUNG_VOL_DOWN)
         {
             do_volume(ARG_VOLUME_DOWN);
-            updateDisplay();
         }
         else if(results.value == SAMSUNG_MUTE)
         {
             do_mute();
-            updateDisplay();
         }
         else if (results.value == SAMSUNG_A) 
         {
             do_power();
-            updateDisplay();
         }
         else if (results.value == SAMSUNG_B) 
         {
@@ -505,7 +503,6 @@ void loop()
             is_powered = false;
             is_muted = false;
             current_volume = 0;
-            updateDisplay();
         }       
         else
         {
@@ -513,11 +510,14 @@ void loop()
         }
 
 
-        // this will reset the OLED burn in mode
+        // this will reset the OLED anti burn in mode
         is_anti_burn_in_active = false;
 
         // we have received an IR code, so user is active, indicate by setting last change time        
         last_change_time_ms = 0;
+
+        // update the display according to current state
+        updateDisplay();
 
 
         Serial.print("is_powered: ");Serial.println(is_powered);
